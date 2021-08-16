@@ -96,7 +96,14 @@ def add_book():
 def delete_book():
 
     # Get id
-    id = int(request.args.get('id'))
+    id = request.args.get('id')
+    if id is not None: 
+        try:
+            id = int(id)
+        except ValueError:
+            return json_response({ "error": "id needs to be of type int"}, 400)
+    else:
+        return json_response({ "error": "id is a required field"}, 400)
 
     # Look for book using id
     for book in bookList:
