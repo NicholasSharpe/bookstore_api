@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request, make_response
 from marshmallow import schema, ValidationError
 
 from model.book import Book, BookSchema
-from model.filter_type import FilterType
 
 import json
 import datetime as dt
@@ -12,6 +11,8 @@ app = Flask(__name__)
 SORTING_METHODS = ['author', 'releaseDate', 'title']
 
 SORTING_DIRECTIONS = ['desc', 'asc']
+
+FILTER_TYPES = ['tags', 'authors']
 
 bookList = [
     Book('1984', 'George Orwell', ['dystopian', 'fiction'], dt.date(1949, 6, 8)),
@@ -37,14 +38,14 @@ def get_books():
     sortDirection = ""
 
     # Get filter arguments
-    tagsStr = request.args.get('tags')
+    tagsStr = request.args.get(FILTER_TYPES[0]) # tags
     if tagsStr is not None:
         tags = tagsStr.split(",")
-        filters.append(FilterType.TAGS)
-    authorsStr = request.args.get('authors')
+        filters.append(FILTER_TYPES[0])
+    authorsStr = request.args.get(FILTER_TYPES[1]) # authors
     if authorsStr is not None:
         authors = authorsStr.split(",")
-        filters.append(FilterType.AUTHORS)
+        filters.append(FILTER_TYPES[1])
 
     # Get sorting arguments
     sortMethod = request.args.get('sortMethod')
@@ -54,23 +55,23 @@ def get_books():
     if sortDirection is not None and sortDirection not in SORTING_DIRECTIONS:
         return json_response({ "error": "Not a valid sorting direction. Try: {}".format(SORTING_DIRECTIONS) }, 400)
 
-    # If there are filters, filter the books
-    if len(filters) == 0:
-        responseBookList = bookList
-    else:
-        if FilterType.TAGS in filters:
+    # If there are filters, filter the books   
+    if len(filters) > 0:
+        if FILTER_TYPES[0] in filters: # tags
             responseBookList = list(filter(lambda book: all(tag in book.tags for tag in tags), bookList))       
-        if FilterType.AUTHORS in filters:
+        if FILTER_TYPES[1] in filters: # authors
             responseBookList = list(filter(lambda book: book.author.lower() in map(str.lower, authors), (responseBookList if len(responseBookList) > 0 else bookList)))
+    else:
+        responseBookList = bookList
 
     # Sort the list
     sortBool = True if sortDirection == SORTING_DIRECTIONS[0] else False
     if sortMethod is not None:
-        if sortMethod == SORTING_METHODS[0]: # Author
+        if sortMethod == SORTING_METHODS[0]: # author
             responseBookList.sort(key = lambda x: x.author, reverse=sortBool)
-        elif sortMethod == SORTING_METHODS[1]: # Release Date
+        elif sortMethod == SORTING_METHODS[1]: # releaseDate
             responseBookList.sort(key = lambda x: x.releaseDate, reverse=sortBool)
-        elif sortMethod == SORTING_METHODS[2]: # Title
+        elif sortMethod == SORTING_METHODS[2]: # title
             responseBookList.sort(key = lambda x: x.title, reverse=sortBool)
  
     # Send json response with requested books
